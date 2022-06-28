@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+	<flow name="tracking-orchestrator" doc:id="b1060cd8-9f9a-4ea4-859b-69c4ff01244b" >
+		<choice doc:name="Choice" doc:id="7929a170-42a8-4b90-b803-2bb76e61155d" >
+			<when expression="#[vars.isNumber]" >
+				<ee:transform doc:name="Choice Slot Customer" doc:id="b48469b2-3316-47f3-b2bb-c17de16372cd">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+if (vars.lexResponse.slots.code  == null and vars.lexResponse.sessionAttributes.slotFlag == "code" and vars.lexResponse.dialogAction.slots.code  == null)
+	"force-tracking-code-sflow"
+else if (vars.lexResponse.slots.code  == null)
+	"tracking-code-message-sflow"
+else "validate-message-sflow"]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+				<flow-ref doc:name="Invoke Slot Customer Message" doc:id="7673ad45-26aa-4c9d-8cd1-34a008243e58" name="#[payload]" />
+			</when>
+			<otherwise >
+			<ee:transform doc:name="Choice Slot Customer" doc:id="c04cbc07-c223-40ee-a9bb-1e4bb3179540">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+if (vars.lexResponse.slots.code  != null and vars.lexResponse.sessionAttributes.slotFlag == "code")
+	"force-tracking-code-sflow"
+else if (vars.lexResponse.slots.code  == null)
+	"tracking-code-message-sflow"
+else "decision-tracking-number-sflow"]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+				<flow-ref doc:name="Invoke Slot Customer Message" doc:id="0fedea1d-cabc-4f42-90f1-1db7ae08daaa" name="#[payload]" />
+			</otherwise>
+		</choice>
+	</flow>
+	<flow name="tracking-code-message-sflow" doc:id="93de1907-f09f-401a-a67f-c61c2261df6a" >
+		<set-variable value='#[{&#10;	intentFlag: "GetTracking",&#10;	slotFlag: "code"&#10;}]' doc:name="flag" doc:id="ba443477-40da-4adb-a474-6f66fe5c76ba" variableName="flag" />
+		<flow-ref doc:name="invoke-put-session-flag-sflow" doc:id="5f631a4b-8259-49f3-af0d-4d94cc114f16" name="put-session-flag-sflow" />
+		<ee:transform doc:name="Tracking Code Message" doc:id="510ba9fd-96cc-4479-8273-0d3eb027c4fe" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+[
+	{
+		message: "¡Perfecto! Por favor, indíqueme el código de tracking de su paquete: \nEjemplo: NE-XXXXXX-XX"
+	}
+]]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="force-tracking-code-sflow" doc:id="b87348bc-7c04-4622-8413-a3edc142aa47">
+		<set-variable value='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10;	"dialogAction": { &#10;  		"intentName": "GetTracking",&#10;  		"message": null,&#10;	    "messageFormat": null,&#10;	    "slotToElicit": "code",&#10;  		"slots": vars.lexResponse.slots default {} ++ {&#10;  			"code": vars.request.message&#10;  		},&#10;  		"type": "ElicitSlot"&#10;   	}&#10;}]' doc:name="body" doc:id="9d88bc81-2a62-438d-9285-2ccd0bc831ae" variableName="body" />
+		<flow-ref doc:name="invoke-put-session-sflow" doc:id="26cdc943-e4e3-4f75-9100-b48a71bbbcf7" name="put-session-sflow" />
+		<flow-ref doc:name="invoke-validate-message-sflow" doc:id="9cf7aab7-b6cc-4a0c-8fd1-64ed28617043" name="validate-message-sflow" />
+	</flow>
+	<flow name="validate-message-sflow" doc:id="4a78c56a-a197-4231-a1e1-baf5ffaffd40" >
+		<set-variable value="#[vars.request.message]" doc:name="code" doc:id="053626ec-56db-4079-94de-7ad140b4e268" variableName="code"/>
+		<flow-ref doc:name="get-tracking-sflow" doc:id="06d32528-d522-47b5-981b-f82b3eb53430" name="get-tracking-sflow"/>
+		<choice doc:name="Choice" doc:id="607d0b84-e527-4703-883a-7b9697a882c6" >
+			<when expression="#[!isEmpty(payload.data)]">
+				<set-variable value="#[payload.data[0]]" doc:name="tracking information" doc:id="0633e25c-b611-4b3d-a35c-16f584cd77ea" variableName="track"/>
+				<set-variable value='#[%dw 2.0&#10;output application/json&#10;---&#10;{    &#10;    "dialogAction": {&#10;    	"type": "Delegate",&#10;        "intentName": "DecisionIntent",&#10;        "message": null,&#10;	    "messageFormat": null,&#10;        "slotToElicit" : "decision",&#10;        "slots": {&#10;            "decision": null&#10;        }&#10;    },&#10;   	"sessionAttributes": {} &#10;}]' doc:name="body" doc:id="576335ca-9aac-417e-836c-346ac6ad2743" variableName="body" />
+				<flow-ref doc:name="invoke-put-session-sflow" doc:id="1f55c866-87a4-479f-bd35-26bfa3ff1497" name="put-session-sflow" />
+				<ee:transform doc:name="tracking message information" doc:id="b5df404c-1091-4e84-a5ee-7a24a8ec5842">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+[
+	{
+		"message": "El paquete: " ++ vars.track.description ++ "\ndel código de tracking: " ++ vars.track.Code ++ "\nse encuentra: " ++ vars.track.status
+	},
+	{
+        "message": "¿Le puedo ayudar en algo más? \n\n1. Sí, por favor. \n2. No, gracias."
+    }
+]]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise >
+			<set-variable value='#[%dw 2.0
+&#10;output application/json
+&#10;---
+&#10;{    
+&#10;    "dialogAction": {
+&#10;    	"type": "Delegate",
+&#10;        "intentName": "DecisionIntent",
+&#10;        "message": null,
+&#10;	    "messageFormat": null,
+&#10;        "slotToElicit" : "decision",
+&#10;        "slots": {
+&#10;            "decision": null
+&#10;        }
+&#10;    },
+&#10;   	"sessionAttributes": {} 
+&#10;}]' doc:name="body" doc:id="6bebb87a-d937-4b04-81ae-3ba330522660" variableName="body" />
+				<flow-ref doc:name="invoke-put-session-sflow" doc:id="1561f383-a2b2-48d2-a9c5-698b817d1c8a" name="put-session-sflow" />
+				<ee:transform doc:name="Invalid code" doc:id="f7fe50b0-7705-41fe-8dc7-f6250543d861" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+[
+	{
+		message: "Disculpe, el codigo de tracking indicado no existe."
+	},
+	{
+		message: "¿Le puedo ayudar en algo más? \n\n1. Sí, por favor. \n2. No, gracias."
+	}
+]]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+	</flow>
+	<flow name="decision-tracking-number-sflow" doc:id="af1333f8-77c9-46eb-8384-2b88420bae40" >
+		<set-variable value='#[["Si", "No"]]' doc:name="options" doc:id="ca0411fa-f175-4719-b258-58d10918353c" variableName="options" />
+		<choice doc:name="Choice" doc:id="f9fb0470-bedc-4dc1-9ccd-7edbe988f421" >
+			<when expression="#[((vars.request.message contains ('1')) or (vars.request.message contains ('2')))]" >
+				<set-variable value="#[true]" doc:name="final" doc:id="f9ec8e22-f02e-404a-9bea-82bf920efa38" variableName="final" />
+				<set-variable value="#[%dw 2.0&#10;import * from dw::util::Values&#10;output application/json&#10;var nu = ((vars.request.message contains ('1')) or (vars.request.message contains ('2')))&#10;var decision = if (nu)&#10;    if(vars.request.message as Number == 1)&#10;        vars.request update &quot;message&quot; with &quot;si&quot;&#10;    else&#10;        vars.request update &quot;message&quot; with &quot;no&quot;&#10;else&#10;    if(lower(vars.request.message) contains (&quot;si&quot;))&#10;        vars.request update &quot;message&quot; with &quot;si&quot;&#10;    else&#10;        vars.request update &quot;message&quot; with &quot;no&quot;&#10;---&#10;{&#10;	message: decision.message default &quot;&quot;,&#10;	userId: vars.request.userId,&#10;	channel: vars.request.channel&#10;}]" doc:name="request" doc:id="d4cfef7e-7f58-4957-bf04-7a0e387f2461" variableName="request" />
+				<set-variable value='#[%dw 2.0&#10;output application/json&#10;---&#10;{    &#10;    "dialogAction": {&#10;    	"type": "Delegate",&#10;        "intentName": "DecisionIntent",&#10;        "message": null,&#10;	    "messageFormat": null,&#10;        "slotToElicit" : "decision",&#10;        "slots": {&#10;            "decision": null&#10;        }&#10;    },&#10;   	"sessionAttributes": {} &#10;}]' doc:name="body" doc:id="a58bb709-aae9-41e8-8d19-b7ba0951b5dd" variableName="body" />
+				<flow-ref doc:name="invoke-put-session-sflow" doc:id="f89714fc-b708-4f8d-a2f9-e5d38013da39" name="put-session-sflow" />
+				<flow-ref doc:name="decision-final-orchestrator" doc:id="8e45b968-a2cf-4873-8bc7-ef3c11b91a0e" name="decision-final-orchestrator" />
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Invalid Option Message" doc:id="c45aa9f3-66ff-4aef-a4c7-70a6c9a09bfa" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+[
+	{
+		message: "Disculpe, debe ingresar un valor de la lista indicada."
+	},
+	{
+		message: "¿Le puedo ayudar en algo más? \n\n1. Sí, por favor. \n2. No, gracias."
+	}
+]]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+	</flow>
+</mule>

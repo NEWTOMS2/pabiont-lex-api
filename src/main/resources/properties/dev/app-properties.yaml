@@ -1,0 +1,26 @@
+http:
+  host: "0.0.0.0"
+  port: "8081"
+  
+https:
+  port: "8082"
+
+
+aws:
+  accessKey: "${secure::aws.accessKey}"
+  secretKey: "${secure::aws.secretKey}"
+  host: "runtime.lex.us-east-1.amazonaws.com"
+  port: "443"
+  region: "us-east-1"
+  service: "lex"
+  basePath: "/bot/PabiontChat/alias/Dev/user/"
+  
+twilio:
+  username: "${secure::twilio.username}"
+  password: "${secure::twilio.password}"
+  sid: "${secure::twilio.sid}"
+  
+Pabiont-sys:
+  host: "pabiont-system-api.us-e1.cloudhub.io"
+  port: ""
+  basePath: "/api"

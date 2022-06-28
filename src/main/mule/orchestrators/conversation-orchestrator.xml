@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:awsv4auth="http://www.mulesoft.org/schema/mule/awsv4auth" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/awsv4auth http://www.mulesoft.org/schema/mule/awsv4auth/current/mule-awsv4auth.xsd">
+	<flow name="conversation-orchestrator" doc:id="42673044-6b76-4391-a328-b6a92b168ff1" >
+		<ee:transform doc:name="Transform to JSON" doc:id="539b2fa4-17e1-45df-9100-e76b7ce3dc9d" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+vars.request]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<set-variable value="#[%dw 2.0&#10;import isNumeric from dw::core::Strings&#10;output application/json&#10;---&#10;isNumeric(vars.request.message)]" doc:name="isNumber" doc:id="749f4bac-f36d-4b37-8698-f8f81384e1a3" variableName="isNumber"/>
+		<choice doc:name="Choice" doc:id="d7cfa037-82bc-4cd6-bd2e-13fc38ffe1bc" >
+			<when expression="#[(vars.isNumber) and (vars.request.message as Number &lt;= 1000)]">
+				<flow-ref doc:name="invoke-get-session-sflow" doc:id="9c4387cc-16fd-48d2-be1c-01adfecf0d4f" name="get-session-sflow"/>
+				<set-variable value="#[payload]" doc:name="lexResponse" doc:id="df243f68-1bcc-4b09-8c43-090b26ef2653" variableName="lexResponse" />
+				<ee:transform doc:name="Choice Intent" doc:id="02b6d3c0-7b72-4ecd-8410-f1bbdaa45d7b" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+if (vars.lexResponse.sessionAttributes.intentFlag == "Welcome" or vars.lexResponse.sessionAttributes == null or vars.lexResponse.dialogAction.intentName == "Welcome")
+	"welcome-message-sflow"
+else if (vars.lexResponse.dialogAction.intentName == "GetContactInformation")
+	"contact-information-orchestrator"
+else if (vars.lexResponse.dialogAction.intentName == "GetQuotes")
+	"quotes-orchestrator"
+else if (vars.lexResponse.dialogAction.intentName == "GetRequirementsInformation")
+	"requirements-information-orchestrator"	
+else if (vars.lexResponse.dialogAction.intentName == "GetTracking")
+	"tracking-orchestrator"
+else if (vars.lexResponse.dialogAction.intentName == "DecisionIntent")
+	"decision-final-orchestrator"	
+else "error-message-sflow"
+]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise >
+				<flow-ref doc:name="invoke-post-text-sflow" doc:id="96bc4a24-f5ad-4c36-9672-26085534f34d" name="post-text-sflow" />
+				<set-variable value="#[payload]" doc:name="lexResponse" doc:id="906931d8-82dd-4640-91e5-bdcfe38a34a3" variableName="lexResponse" />
+				<ee:transform doc:name="Choice Intent" doc:id="8d93bcd2-e2c2-491e-a6be-ce4bc98d2ee3">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+if (payload.intentName == "Welcome")
+	"welcome-message-sflow"
+else if (payload.intentName == "GetContactInformation")
+	"contact-information-orchestrator"
+else if (payload.intentName == "GetQuotes")
+	"quotes-orchestrator"
+else if (payload.intentName == "GetRequirementsInformation")
+	 "requirements-information-orchestrator"
+else if (payload.intentName == "GetTracking")
+	"tracking-orchestrator"
+else if (payload.intentName == "DecisionIntent")
+	"decision-final-orchestrator"
+else "error-message-sflow"
+]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+			</otherwise>
+		</choice>
+		<flow-ref doc:name="invoke-option-sflow" doc:id="a3126926-5da4-42fc-844e-7896c779ece4" name="#[payload]" />
+		<error-handler >
+			<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="5dad2d99-66ab-405a-84a9-3f187059d68c" type="HTTP:NOT_FOUND">
+				<set-variable value='#[["Artículos prohibídos", "Cotizar mi envio", "Localizar mi paquete", "Informacion de contacto"]]' doc:name="options" doc:id="ec1ad817-15a3-430a-b4c5-275d86a811e5" variableName="options" />
+				<choice doc:name="Choice" doc:id="59f2fd0b-693d-4628-86f1-be38600161b7" >
+					<when expression="#[(((vars.request.message as Number) &lt;= sizeOf(vars.options default [])) and ((vars.request.message as Number) &gt;= 1))]" >
+						<set-variable value='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10;	message: vars.options[vars.request.message as Number -1] default "",&#10;	userId: vars.request.userId,&#10;	channel: vars.request.channel&#10;}]' doc:name="request" doc:id="59ac6eee-9e45-4eeb-b28c-c7bfcc3c1eba" variableName="request" />
+						<set-variable value='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10;    "dialogAction": {&#10;        "fulfillmentState": null,&#10;        "intentName": "Welcome",&#10;        "message": null,&#10;        "messageFormat": null,&#10;        "type": "Delegate"&#10;    },&#10;    "sessionAttributes": vars.lexResponse.sessionAttributes default {} ++ {&#10;		"intentFlag": "Decision",&#10;		"slotFlag": null&#10;    }&#10;}]' doc:name="body" doc:id="46b12437-07a2-4faf-9c3e-a80483a4f6e4" variableName="body" />
+						<flow-ref doc:name="invoke-put-session-sflow" doc:id="dd5dd8e3-9ba1-46e7-b7c5-a65c8a6f3357" name="put-session-sflow" />
+						<flow-ref doc:name="invoke-conversation-orchestrator" doc:id="ecef99ff-b34b-444a-8b0e-92069f564f42" name="conversation-orchestrator" />
+					</when>
+					<otherwise >
+						<ee:transform doc:name="Welcome Message" doc:id="f6078b7a-32db-4be0-af49-80d7dddb97c2" >
+							<ee:message >
+								<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+[
+	{
+		message: "Disculpe, debe ingresar un valor de la lista indicada."
+	},
+    {
+        "message": "¿Cómo te puedo ayudar? \n\n1. Artículos prohibídos \n2. Cotizar mi envío \n3. Localizar mi paquete \n4. Información de contacto"
+    }
+]]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+					</otherwise>
+				</choice>
+			</on-error-continue>
+		</error-handler>
+	</flow>
+	<flow name="welcome-message-sflow" doc:id="ddb9a646-211d-480b-904e-3d6138e3ddc6" >
+		<choice doc:name="Choice" doc:id="d36da227-f89d-4d2b-a2ef-fb2192a8234e" >
+			<when expression="#[vars.lexResponse.sessionAttributes.slotFlag == null and vars.isNumber == false]">
+				<set-variable value='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10;    "sessionAttributes": vars.lexResponse.sessionAttributes default {} ++ {&#10;		intentFlag: "Welcome",&#10;		slotFlag: "request"&#10;	}&#10;}]' doc:name="body" doc:id="7c646e6b-ae76-4e74-a76f-6c294c0c6d52" variableName="body" />
+				<flow-ref doc:name="invoke-put-session-sflow" doc:id="ba40a55d-b9f8-470c-aace-76225c89d918" name="put-session-sflow" />
+				<ee:transform doc:name="Welcome Message" doc:id="bd6344b4-164a-4467-b7dd-e1665d8c4116">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+[
+    {
+        "message": "¡Hola! Soy el asistente virtual de Pabiont. \n¿Cómo te puedo ayudar?"
+    },
+    {
+        "message": "1. Artículos prohibídos \n2. Cotizar mi envío \n3. Localizar mi paquete \n4. Información de contacto"
+    }
+]]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<set-variable value="true" doc:name="final" doc:id="842c0c57-c126-4d6b-8d7e-218619801210" variableName="final"/>
+			</when>
+			<otherwise >
+				<set-variable value='#[["Artículos prohibídos", "Cotizar mi envio", "Localizar mi paquete", "Informacion de contacto"]]' doc:name="options" doc:id="a55d803d-4c1b-4cad-982b-6ba7e2e0437c" variableName="options" />
+				<choice doc:name="Choice" doc:id="4134ca6b-ec92-4a05-b52f-8460977a5911">
+					<when expression="#[(((vars.request.message as Number) &lt;= sizeOf(vars.options default [])) and ((vars.request.message as Number) &gt;= 1))]">
+						<set-variable value='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10;	message: vars.options[vars.request.message as Number -1] default "",&#10;	userId: vars.request.userId,&#10;	channel: vars.request.channel&#10;}]' doc:name="request" doc:id="f34097ab-d255-4cbf-b7ac-febd0020afc1" variableName="request" />
+						<set-variable value='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10;    "dialogAction": {&#10;        "fulfillmentState": null,&#10;        "intentName": "Welcome",&#10;        "message": null,&#10;        "messageFormat": null,&#10;        "type": "Delegate"&#10;    },&#10;    "sessionAttributes": vars.lexResponse.sessionAttributes default {} ++ {&#10;		"intentFlag": "Decision",&#10;		"slotFlag": null&#10;    }&#10;}]' doc:name="body" doc:id="30d21ee9-9df3-441d-8f96-9b6cd4701f42" variableName="body" />
+						<flow-ref doc:name="invoke-put-session-sflow" doc:id="87bc0613-a38d-4f15-9d7d-414e6b94dac0" name="put-session-sflow" />
+						<flow-ref doc:name="invoke-conversation-orchestrator" doc:id="e891e7c0-1947-41a5-8b9d-fa564c5e3d07" name="conversation-orchestrator" />
+					</when>
+					<otherwise >
+						<ee:transform doc:name="Welcome Message" doc:id="2c774980-64cd-4c76-9303-e42f5022093c" >
+							<ee:message >
+								<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+[
+	{
+		message: "Disculpe, debe ingresar un valor de la lista indicada."
+	},
+    {
+        "message": "¿Cómo te puedo ayudar? \n\n1. Artículos prohibídos \n2. Cotizar mi envío \n3. Localizar mi paquete \n4. Información de contacto"
+    }
+]]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+					</otherwise>
+				</choice>
+			</otherwise>
+		</choice>
+	</flow>
+	<flow name="error-message-sflow" doc:id="c5b7142b-d9a2-42be-95e2-2c14e5c0f908" >
+		<flow-ref doc:name="invoke-get-session-sflow" doc:id="de5071d9-9f0c-4d40-bdce-529bc9016bd3" name="get-session-sflow"/>
+		<choice doc:name="Choice" doc:id="a6cf946f-c809-4b51-b7ef-1d8ad76ea475" >	
+			<when expression="#[((payload.dialogAction.'type' == &quot;Close&quot;) and (vars.request.message contains ('si')) or (vars.request.message contains ('no')))]">
+				<flow-ref doc:name="decision-final-orchestrator" doc:id="86cb884c-ed4f-4665-bfbe-3522eb7972a0" name="decision-final-orchestrator"/>
+			</when>
+			<when expression="#[((payload.dialogAction.'type' == &quot;Close&quot;) and (payload.sessionAttributes.slotFlag == &quot;request&quot;))]">
+				<set-variable value='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10;	"dialogAction": { &#10;      		"intentName": payload.sessionAttributes.intentFlag,&#10;      		"message": null,&#10;	        "messageFormat": null,&#10;	        "slotToElicit": null,&#10;      		"slots": {}&#10;   	}&#10;}]' doc:name="body" doc:id="ca2f7fce-48e3-4275-a2b7-d664a157123b" variableName="body" />
+				<flow-ref doc:name="invoke-put-session-sflow" doc:id="5b7e9a55-088a-4b5c-9b74-d6a98e7e523c" name="put-session-sflow" />
+				<flow-ref doc:name="conversation-orchestrator" doc:id="0fed4405-0557-4304-a24a-dfc4ffb5bf2d" name="conversation-orchestrator" />
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Error Message" doc:id="bc45c8a3-0428-45b5-b49c-b13b9a6cbe79">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+[
+	{
+		message: "Disculpe, no pude entender su mensaje, por favor ingrese un valor valido."
+	}
+]]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+			</otherwise>
+		</choice>
+	</flow>
+</mule>

@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+	<flow name="requirements-information-orchestrator" doc:id="c536475b-c5e0-4ea0-855c-3b62670fd8f6" >
+		<choice doc:name="Choice" doc:id="05639e09-5684-4f5a-bfcc-49a36425fae2" >
+			<when expression="#[vars.isNumber]">
+				<ee:transform doc:name="Choice Slot" doc:id="ad2f5d4b-2edf-48df-b514-1582dafedaa1" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+if ((vars.lexResponse.sessionAttributes.intentFlag == null or vars.lexResponse.sessionAttributes.intentFlag == "Decision") and vars.lexResponse.sessionAttributes.slotFlag  == null)
+	"requirements-information-sflow"
+else "decision-requirements-information-number-sflow"]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<flow-ref doc:name="invoke-slot-sflow" doc:id="7ce546d9-b7f4-4c19-9d81-715fbc049932" name="#[payload]"/>
+			</when>
+			<otherwise>
+			<ee:transform doc:name="Choice Slot" doc:id="c99715a3-13fe-44dd-be43-872d1ead6894" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+if ((vars.lexResponse.sessionAttributes.intentFlag == null or vars.lexResponse.sessionAttributes.intentFlag == "Decision") and vars.lexResponse.sessionAttributes.slotFlag  == null)
+	"requirements-information-sflow"
+else "decision-requirements-information-number-sflow"]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<flow-ref doc:name="contact-information-sflow" doc:id="59e1ed9f-cc32-453b-af52-4a4e5d36d551" name="#[payload]"/>
+			</otherwise>
+		</choice>
+	</flow>
+	<flow name="requirements-information-sflow" doc:id="4a8f4682-819c-4389-94d3-1bcec654dd48">
+		<set-variable value='#[{&#10;	intentFlag: "GetContactInformation",&#10;	slotFlag: "request"&#10;}]' doc:name="flag" doc:id="66f1ece1-089e-49aa-b83c-2ad4c3be220d" variableName="flag" />
+		<flow-ref doc:name="invoke-put-session-flag-sflow" doc:id="37204472-5c3e-4275-b48b-cf4b3d93e12d" name="put-session-flag-sflow" />
+		<ee:transform doc:name="Transform Message" doc:id="25a6d07d-56e2-4df9-8952-5011f935ef03" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+[
+    {
+        "message": "Evita cualquier eventualidad \nArtículos Prohibídos para envíos a Venezuela \n1) Máscara de gas.\n2) Chalecos de protección personal a prueba de balas.\n3) Pistola de aire, municiones de pintura o aire y todo lo relacionado a municiones.\n4) Tirolinas o “Chinas” de cualquier tipo.\n5) Gas pimienta.\n6) Mazo, Arma de Electroshock.\n7) Bolas de rodamientos. \nEntre otros articulos. \nsi desea conocer el reglamento completo, contáctenos a través del correo: info@newtoms.com"
+    },
+	{
+        "message": "¿Le puedo ayudar en algo más? \n\n1. Sí, por favor. \n2. No, gracias."
+    }
+]]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="decision-requirements-information-number-sflow" doc:id="9bc4821a-5932-4aab-b53a-f0e955254cc4" >
+		<set-variable value='#[["Si", "No"]]' doc:name="options" doc:id="5e5b570a-3a0a-43f8-bd1b-76411fbccb2e" variableName="options"/>
+		<choice doc:name="Choice" doc:id="e956fe95-efbf-4259-bd65-eed26f9aec9f" >
+			<when expression="#[((vars.request.message contains ('1')) or (vars.request.message contains ('2')))]" >
+				<set-variable value="#[true]" doc:name="final" doc:id="77a76045-cffb-43ee-bb81-9254306cf856" variableName="final" />
+				<set-variable value="#[%dw 2.0&#10;import * from dw::util::Values&#10;output application/json&#10;var nu = ((vars.request.message contains ('1')) or (vars.request.message contains ('2')))&#10;var decision = if (nu)&#10;    if(vars.request.message as Number == 1)&#10;        vars.request update &quot;message&quot; with &quot;si&quot;&#10;    else&#10;        vars.request update &quot;message&quot; with &quot;no&quot;&#10;else&#10;    if(lower(vars.request.message) contains (&quot;si&quot;))&#10;        vars.request update &quot;message&quot; with &quot;si&quot;&#10;    else&#10;        vars.request update &quot;message&quot; with &quot;no&quot;&#10;---&#10;{&#10;	message: decision.message default &quot;&quot;,&#10;	userId: vars.request.userId,&#10;	channel: vars.request.channel&#10;}]" doc:name="request" doc:id="00a87d16-9a64-4f8f-9d2d-eb849ae6cd1c" variableName="request" />
+				<set-variable value='#[%dw 2.0&#10;output application/json&#10;---&#10;{    &#10;    "dialogAction": {&#10;    	"type": "Delegate",&#10;        "intentName": "DecisionIntent",&#10;        "message": null,&#10;	    "messageFormat": null,&#10;        "slotToElicit" : "decision",&#10;        "slots": {&#10;            "decision": null&#10;        }&#10;    },&#10;   	"sessionAttributes": {} &#10;}]' doc:name="body" doc:id="582a0f0f-226e-4494-944f-5d7ddcdf26e9" variableName="body" />
+				<flow-ref doc:name="invoke-put-session-sflow" doc:id="acba0fb0-5e59-46d7-82ef-4df963fc85d9" name="put-session-sflow" />
+				<flow-ref doc:name="decision-final-orchestrator" doc:id="ce607558-bbac-4afe-b9a8-30473e2878e6" name="decision-final-orchestrator" />
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Invalid Option Message" doc:id="5858cc7e-906f-4263-b7c4-29641ac37add" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+[
+	{
+		message: "Disculpe, debe ingresar un valor de la lista indicada."
+	},
+	{
+		message: "¿Le puedo ayudar en algo más? \n\n1. Sí, por favor. \n2. No, gracias."
+	}
+]]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+	</flow>
+</mule>

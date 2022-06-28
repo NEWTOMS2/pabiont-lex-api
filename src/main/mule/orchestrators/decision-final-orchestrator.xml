@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<flow name="decision-final-orchestrator" doc:id="a5529d7f-b806-49cf-919a-24fcac8cce9f" >
+		<set-variable value="#[%dw 2.0&#10;import * from dw::util::Values&#10;output application/json&#10;var nu = ((vars.request.message contains ('1')) or (vars.request.message contains ('2')))&#10;var decision = if (nu)&#10;    if(vars.request.message as Number == 1)&#10;        vars.request update &quot;message&quot; with &quot;si&quot;&#10;    else&#10;        vars.request update &quot;message&quot; with &quot;no&quot;&#10;else&#10;    if(lower(vars.request.message) contains (&quot;si&quot;))&#10;        vars.request update &quot;message&quot; with &quot;si&quot;&#10;    else&#10;        vars.request update &quot;message&quot; with &quot;no&quot;&#10;---&#10;{&#10;	message: decision.message default &quot;&quot;,&#10;	userId: vars.request.userId,&#10;	channel: vars.request.channel&#10;}]" doc:name="request" doc:id="bf11707e-af79-47d2-808b-4a2f9c41498f" variableName="request" />
+		<choice doc:name="Choice" doc:id="aba064e3-dae3-46c1-995a-a22b9b1bb086">
+					<when expression='#[vars.request.message  == "si"]'>
+						<set-variable value='#[%dw 2.0&#10;output application/json&#10;---&#10;{    &#10;    "dialogAction": {&#10;    	"type": "Delegate",&#10;        "intentName": "Welcome",&#10;        "message": null,&#10;	    "messageFormat": null&#10;    }&#10;}]' doc:name="body" doc:id="9768dac7-1a6d-46ef-958b-44ff21965365" variableName="body" />
+						<flow-ref doc:name="invoke-put-session-sflow" doc:id="9523e1db-cc68-4a9d-8296-a7dc2085879e" name="put-session-sflow" />
+						<ee:transform doc:name="Options Message" doc:id="af9a4db3-bf57-4ee3-8829-83fcc8783804">
+							<ee:message>
+								<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+[
+	{
+        "message": "¿Cómo te puedo ayudar? \n\n1. Artículos prohibídos \n2. Cotizar mi envío \n3. Localizar mi paquete \n4. Información de contacto"
+    }
+]]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+				<set-variable value="#[true]" doc:name="final" doc:id="3edfdc19-3d89-46d6-a6e0-48d9ffa2cf4a" variableName="final" />
+					</when>
+					<otherwise>
+						<flow-ref doc:name="invoke-put-delete-session-sflow" doc:id="8c117814-b1b3-4341-b4dc-f4e6c12c5021" name="put-delete-session-sflow" />
+						<ee:transform doc:name="Goodbye Message" doc:id="95dff2bd-862c-4939-b681-e62eabfd2216">
+							<ee:message>
+								<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+[
+	{
+        "message": "Espero haberle servido de ayuda. ¡Gracias por usar el chat de Pabiont!"
+    }
+]]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+				<set-variable value="#[true]" doc:name="final" doc:id="3b9e925e-0ccc-4d34-bf9c-0e864f104f3d" variableName="final" />
+					</otherwise>
+				</choice>
+	</flow>
+</mule>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+	<flow name="request-twilio-image" doc:id="3f158136-d258-4732-9f8c-22214729f3c0" >
+		<http:request method="GET" doc:name="Request Image Twilio" doc:id="843ba970-8f86-443d-bb2d-3083621b33cb" config-ref="HTTP_Request_Twilio_Image" path="#[vars.request.message]" />
+	</flow>
+</mule>

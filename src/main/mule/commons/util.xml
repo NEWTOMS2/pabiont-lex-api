@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<sub-flow name="success-response" doc:id="2a4d56b5-ea8e-4094-8cf7-9c9fa38ef292" >
+		<ee:transform doc:name="Success Response" doc:id="b3cc5d34-8656-4cf5-b9e5-042027ff2d68" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	status: "Success",
+	cid: correlationId,
+  	code: "200",
+  	timestamp: now(),
+  	data: payload,
+  	error: []
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</sub-flow>
+	<sub-flow name="failure-response" doc:id="fe96ad51-5598-43ba-baca-49e9d1940bcf" >
+		<ee:transform doc:name="Failure Response" doc:id="da47d5b7-e7a2-4ee3-8d1e-2ca48fe89ac6" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	status: "Error",
+	cid: correlationId,
+  	code: "500",
+  	timestamp: now(),
+  	data: [],
+  	error: [
+  		{
+	      "error_message": "Internal error",
+	      "error_description": "Internal error" 
+	    }
+  	]
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</sub-flow>
+	<sub-flow name="restart-flags" doc:id="38d48a91-73ac-463f-b48c-70ccff993b9c" >
+		<set-variable value='#[{&#10;	intentFlag: "Decision",&#10;	slotFlag: null&#10;}]' doc:name="flag" doc:id="1e931975-1d5c-4474-8487-f3a740fc0ba5" variableName="flag" />
+		<flow-ref doc:name="invoke-put-session-flag-sflow" doc:id="0837ec93-6193-4c9e-8b43-f9404d3b0bc1" name="put-session-flag-sflow" />
+	</sub-flow>
+</mule>

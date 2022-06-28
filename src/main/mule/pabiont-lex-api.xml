@@ -1,0 +1,339 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:twilio="http://www.mulesoft.org/schema/mule/twilio" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:os="http://www.mulesoft.org/schema/mule/os" xmlns:tls="http://www.mulesoft.org/schema/mule/tls" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd  http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd
+http://www.mulesoft.org/schema/mule/twilio http://www.mulesoft.org/schema/mule/twilio/current/mule-twilio.xsd">
+    <http:listener-config name="pabiont-lex-api-httpListenerConfig">
+        <http:listener-connection host="0.0.0.0" port="8082" protocol="HTTPS">
+            <tls:context>
+                <tls:trust-store insecure="true" />
+                <tls:key-store type="jks" path="tls/keystore-pabiont.jks" alias="pabiont" keyPassword="pabiont123" password="pabiont123" />
+            </tls:context>
+        </http:listener-connection>
+        <http:listener-interceptors>
+            <http:cors-interceptor>
+                <http:origins>
+                    <http:public-resource />
+                </http:origins>
+            </http:cors-interceptor>
+        </http:listener-interceptors>
+    </http:listener-config>
+    <apikit:config name="pabiont-lex-api-config" api="resource::18fb7fde-d35c-4b58-b297-07464da7ce2b.team-venezuela:pabiont-lex-api:1.0.5:raml:zip:pabiont-lex-api.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+    <flow name="pabiont-lex-api-main">
+        <http:listener config-ref="pabiont-lex-api-httpListenerConfig" path="/api/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:router config-ref="pabiont-lex-api-config" />
+        <error-handler>
+            <on-error-propagate type="APIKIT:BAD_REQUEST">
+                <ee:transform xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Bad request"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">400</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Resource not found"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">404</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:METHOD_NOT_ALLOWED">
+                <ee:transform xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Method not allowed"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">405</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_ACCEPTABLE">
+                <ee:transform xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not acceptable"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">406</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:UNSUPPORTED_MEDIA_TYPE">
+                <ee:transform xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Unsupported media type"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">415</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_IMPLEMENTED">
+                <ee:transform xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not Implemented"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">501</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="pabiont-lex-api-console">
+        <http:listener config-ref="pabiont-lex-api-httpListenerConfig" path="/console/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:console config-ref="pabiont-lex-api-config" />
+        <error-handler>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform xsi:schemaLocation=" http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Resource not found"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">404</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="post:\webchat:application\json:pabiont-lex-api-config">
+        <ee:transform doc:name="Init Variables" doc:id="1278bc14-b54e-4df3-8256-4db7abcfa379">
+            <ee:message />
+            <ee:variables>
+                <ee:set-variable variableName="logs"><![CDATA[%dw 2.0
+output application/java
+---
+{
+	"cid": attributes.headers.cid default correlationId,
+	"name": Mule::p('app.name'),
+	"destination_application": attributes.header.source,
+}]]></ee:set-variable>
+                <ee:set-variable variableName="timezone"><![CDATA[%dw 2.0
+output application/java
+---
+Mule::p('default.timezone') default 'UTC']]></ee:set-variable>
+                <ee:set-variable variableName="timezoneFormat"><![CDATA[%dw 2.0
+output application/java
+---
+"yyyy-MM-dd'T'HH:mm:ss.SSSZ"]]></ee:set-variable>
+                <ee:set-variable variableName="final"><![CDATA[false]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <ee:transform doc:name="Init Flow Logs" doc:id="a6b33619-3cfb-4e35-9306-f021cc807060">
+            <ee:message />
+            <ee:variables>
+                <ee:set-variable variableName="logs"><![CDATA[%dw 2.0
+output application/java
+---
+vars.logs default {} ++ {
+	"business_process_api": "Generate faqs",
+}]]></ee:set-variable>
+                <ee:set-variable variableName="auditItem"><![CDATA[%dw 2.0
+output application/java
+---
+{
+	"business_context": vars.logs.cid
+}]]></ee:set-variable>
+                <ee:set-variable variableName="headers"><![CDATA[%dw 2.0
+output application/java
+---
+{
+	source: vars.logs.name
+}]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <logger level="INFO" doc:name="Start" doc:id="30db3b7c-61ca-44d3-bea0-ad1f7130806e" message="#[%dw 2.0 &#xA;output application/json &#xA;--- &#xA;vars.logs default {} ++  &#xA;{   &#xA; &quot;timestamp&quot;: (now() &gt;&gt; (vars.timezone default &quot;&quot;)) as String {format: vars.timezoneFormat},   &#xA; logMessage: &quot;START&quot; &#xA;}]" />
+        <set-variable value="#[%dw 2.0 &#xA;output application/json &#xA;--- &#xA;{ &#xA; message: payload.message, &#xA; userId: &quot;Web-&quot; ++ payload.session, &#xA; channel: &quot;Webchat&quot; &#xA;}]" doc:name="request" doc:id="00350cc1-accb-4860-92e6-862bb66690f1" variableName="request" />
+        <flow-ref doc:name="invoke-conversation-orchestrator" doc:id="5aaad21b-8471-461d-b870-926a0f1677b1" name="conversation-orchestrator" />
+        <choice doc:name="Choice" doc:id="14c7f745-b9c9-4add-b138-7d6baf177055">
+            <when expression="#[vars.final]">
+                <set-variable value="#[payload]" doc:name="response" doc:id="3acfd30c-ceab-4fa2-9d27-f17bf80078ca" variableName="response" />
+                <flow-ref doc:name="restart-flags" doc:id="7b98f269-9a2f-4364-ba88-2aa53e98bff7" name="restart-flags" />
+                <set-payload value="#[vars.response]" doc:name="Set Payload" doc:id="ec7d6fea-bd7d-47f9-a0a1-523b272e4ed0" />
+            </when>
+        </choice>
+        <logger level="INFO" doc:name="End" doc:id="f5cfd56b-2601-4d84-b265-c52f1fd6fd41" message="#[%dw 2.0 &#xA;output application/json &#xA;--- &#xA;vars.logs default {} ++  &#xA;{   &#xA; &quot;timestamp&quot;: (now() &gt;&gt; (vars.timezone default &quot;&quot;)) as String {format: vars.timezoneFormat},   &#xA; logMessage: &quot;END&quot; &#xA;}]" />
+        <error-handler ref="listener-error-handler" />
+    </flow>
+    <flow name="post:\whatsapp:pabiont-lex-api-config">
+        <ee:transform doc:name="Init Variables" doc:id="51bfdd93-3232-47af-9381-9970eaf21875">
+            <ee:message />
+            <ee:variables>
+                <ee:set-variable variableName="logs"><![CDATA[%dw 2.0
+output application/java
+---
+{
+	"cid": attributes.headers.cid default correlationId,
+	"name": Mule::p('app.name'),
+	"destination_application": attributes.header.source,
+}]]></ee:set-variable>
+                <ee:set-variable variableName="timezone"><![CDATA[%dw 2.0
+output application/java
+---
+Mule::p('default.timezone') default 'UTC']]></ee:set-variable>
+                <ee:set-variable variableName="timezoneFormat"><![CDATA[%dw 2.0
+output application/java
+---
+"yyyy-MM-dd'T'HH:mm:ss.SSSZ"]]></ee:set-variable>
+                <ee:set-variable variableName="final"><![CDATA[false]]></ee:set-variable>
+				<ee:set-variable variableName="From" ><![CDATA[payload.From]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <ee:transform doc:name="Init Flow Logs" doc:id="e868f1b2-f4cd-403e-876d-6c3cdf495b46">
+            <ee:message />
+            <ee:variables>
+                <ee:set-variable variableName="logs"><![CDATA[%dw 2.0
+output application/java
+---
+vars.logs default {} ++ {
+	"business_process_api": "Generate faqs",
+}]]></ee:set-variable>
+                <ee:set-variable variableName="auditItem"><![CDATA[%dw 2.0
+output application/java
+---
+{
+	"business_context": vars.logs.cid
+}]]></ee:set-variable>
+                <ee:set-variable variableName="headers"><![CDATA[%dw 2.0
+output application/java
+---
+{
+	source: vars.logs.name
+}]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <logger level="INFO" doc:name="Start" doc:id="05725aa8-7aed-444f-aab4-44b5ea855957" message="#[%dw 2.0 &#xA;output application/json &#xA;--- &#xA;vars.logs default {} ++  &#xA;{   &#xA; &quot;timestamp&quot;: (now() &gt;&gt; (vars.timezone default &quot;&quot;)) as String {format: vars.timezoneFormat},   &#xA; logMessage: &quot;START&quot; &#xA;}]" />
+        <set-variable value="#[%dw 2.0 &#xA;output application/json &#xA;--- &#xA;{ &#xA; message: payload.Body, &#xA; userId: payload.From replace &quot;:+&quot; with &quot;&quot;, &#xA; channel: &quot;Whatsapp&quot; &#xA;}]" doc:name="request" doc:id="d5f6af16-532a-4f08-840d-01fc20612bb4" variableName="request" />
+        <flow-ref doc:name="invoke-conversation-orchestrator" doc:id="0d44831a-1fe4-47f2-b2f7-09e949579f1a" name="conversation-orchestrator" />
+        <choice doc:name="Choice" doc:id="1b08d02b-76ad-4380-a242-b99b84932f9a">
+            <when expression="#[(sizeOf(payload.message) &gt; 1)]">
+                <ee:transform doc:name="Messages to be stored" doc:id="8e18bc6b-87e2-4514-9fb4-076e49e4952f">
+                    <ee:message />
+                    <ee:variables>
+                        <ee:set-variable variableName="messages_os"><![CDATA[%dw 2.0
+output application/java
+var messages = payload.message filter ((msg, index) -> index > 0)
+---
+ messages map ((message , index) -> {
+ 	From: "whatsapp:+14155238886",
+ 	Body: message,
+ 	To: vars.From
+})]]></ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+                <os:store doc:name="Store" doc:id="367dddf1-7ef8-47ff-915a-3d86893e5307" key="#[vars.From]" objectStore="Object_store_messages">
+                    <os:value><![CDATA[#[vars.messages_os]]]></os:value>
+                </os:store>
+                <ee:transform doc:name="Update payload messages" doc:id="dac5a001-0e78-4bb9-bd89-b02a66ccba1f">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/java
+import * from dw::util::Values
+---
+payload update "message" with (payload.message filter ((msg, index) -> index == 0))]]></ee:set-payload>
+                    </ee:message>
+                </ee:transform>
+            </when>
+        </choice>
+        <ee:transform doc:name="JSON to XML Response" doc:id="b4be8c61-78ee-46b7-875a-3d2302303977">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+---
+Response:
+    Message: payload.message]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+        <choice doc:name="Choice" doc:id="3480f9a8-52c7-4704-a527-42366d2d7453">
+            <when expression="#[vars.final]">
+                <set-variable value="#[payload]" doc:name="response" doc:id="a17d5091-c925-47fb-a38b-5f70e1155331" variableName="response" />
+                <flow-ref doc:name="restart-flags" doc:id="43847d79-49ed-4703-abd6-6c7169b8759d" name="restart-flags" />
+                <set-payload value="#[vars.response]" doc:name="Set Payload" doc:id="abf78300-502d-46df-a90c-f3e17095deab" />
+            </when>
+        </choice>
+        <logger level="INFO" doc:name="End" doc:id="944985f9-223b-4b6b-a5df-b04b618f7d2d" message="#[%dw 2.0 &#xA;output application/json &#xA;--- &#xA;vars.logs default {} ++  &#xA;{   &#xA; &quot;timestamp&quot;: (now() &gt;&gt; (vars.timezone default &quot;&quot;)) as String {format: vars.timezoneFormat},   &#xA; logMessage: &quot;END&quot; &#xA;}]" />
+        <error-handler ref="listener-error-handler" />
+    </flow>
+    <flow name="post:\whatsapp\status:pabiont-lex-api-config">
+		<ee:transform doc:name="Callback object" doc:id="ec33c6a7-955b-44f7-8bab-2e451239fb50" >
+			<ee:message />
+			<ee:variables >
+				<ee:set-variable variableName="user_id" ><![CDATA[%dw 2.0
+output application/json
+---
+payload.user_id]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<os:retrieve doc:name="Get messages in queue" doc:id="af9032d0-d11f-4b65-86ce-ab3ae7d47d4e" key="#[vars.user_id]" objectStore="Object_store_messages" >
+			<os:default-value ><![CDATA[#[{}]]]></os:default-value>
+		</os:retrieve>
+		<ee:transform doc:name="Transform Message" doc:id="7a7fcd6e-f046-4a62-8ef1-2427b9bff857" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload[0]]]></ee:set-payload>
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="message_os" ><![CDATA[%dw 2.0
+output application/json
+---
+payload filter ((msg, index) -> index > 0)
+]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<choice doc:name="Choice" doc:id="42a69c4e-d8ab-4d7a-9dac-9979bcb580f9" >
+			<when expression="#[!isEmpty(payload)]" >
+				<os:store doc:name="Store messages" doc:id="7270847b-3593-4980-a0e0-68e693d0c8e8" key="#[vars.user_id]" objectStore="Object_store_messages" >
+					<os:value ><![CDATA[#[vars.message_os]]]></os:value>
+				</os:store>
+				<twilio:create20100401-accounts-messagesjson-by-account-sid doc:name="Create Message" doc:id="a13c044d-6f6f-4e0a-bb55-4585405117bb" accountSid='#[Mule::p("twilio.sid")]' config-ref="Twilio_Connector_Config">
+					<twilio:accounts-messages-content><![CDATA[#[%dw 2.0
+output application/x-www-form-urlencoded
+---
+payload]]]></twilio:accounts-messages-content>
+				</twilio:create20100401-accounts-messagesjson-by-account-sid>
+			</when>
+		</choice>
+    </flow>
+</mule>

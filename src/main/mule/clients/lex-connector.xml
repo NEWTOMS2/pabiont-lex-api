@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:s3="http://www.mulesoft.org/schema/mule/s3" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:awsv4auth="http://www.mulesoft.org/schema/mule/awsv4auth" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/awsv4auth http://www.mulesoft.org/schema/mule/awsv4auth/current/mule-awsv4auth.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/s3 http://www.mulesoft.org/schema/mule/s3/current/mule-s3.xsd">
+	<flow name="post-text-sflow" doc:id="35f8dfcd-a00c-4c45-b904-a3e417856933" >
+		<set-variable value='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10;   "inputText": java!org::apache::commons::lang3::StringUtils::stripAccents(vars.request.message)&#10;}]' doc:name="body" doc:id="b05dd3f0-5db0-4923-b050-23f39a5e7537" variableName="body" />
+		<set-variable value="#[output application/json --- (now() &gt;&gt; &quot;UTC&quot;) as DateTime  {format:&quot;yyyyMMdd'T'HHmmss'Z'&quot;}]" doc:name="date" doc:id="6dd84cd1-b7c6-4c41-9346-5c667a01f22a" variableName="date" />
+		<awsv4auth:get-authorization-string requestType="POST" doc:name="Get authorization string" doc:id="70dac03e-d607-4f81-a64e-458a481ed936" body="#[vars.body]" accessKey="${aws.accessKey}" secretKey="${aws.secretKey}" regionName="${aws.region}" serviceName="${aws.service}" canonicalURI='#["/bot/PabiontChat/alias/Dev/user/"++ vars.request.userId as String ++ "/text"]' timeStamp="#[vars.date]" hostName='${aws.host}' />
+		<http:request method="POST" doc:name="Request Post Text" doc:id="70567083-d585-4012-9a58-4189f20ae5f0" config-ref="HTTP_Request_configuration_Amazon" path='#[vars.request.userId as String ++ "/text"]' >
+			<http:body ><![CDATA[#[vars.body]]]></http:body>
+			<http:headers ><![CDATA[#[output application/java
+---
+{
+    "Authorization" : payload,
+    "Content-Type" : "application/json",
+    "X-Amz-Date" : vars.date ++ "",
+    "Host" : "runtime.lex.us-east-1.amazonaws.com"
+}]]]></http:headers>
+		</http:request>
+	</flow>
+	<flow name="put-session-sflow" doc:id="b76ab758-2006-4017-b797-cd621fde0b13" >
+		<set-variable value='#[%dw 2.0&#10;output application/json&#10;---&#10;vars.body]' doc:name="bodySession" doc:id="c71990c2-2e9a-4bfe-8c7c-eecc5420dc66" variableName="bodySession"/>
+		<set-variable value="#[output application/json --- (now() &gt;&gt; &quot;UTC&quot;) as DateTime  {format:&quot;yyyyMMdd'T'HHmmss'Z'&quot;}]" doc:name="dateSession" doc:id="ae1d4705-d368-4b07-bed4-820d4987be30" variableName="dateSession" />
+		<awsv4auth:get-authorization-string requestType="POST" doc:name="Get authorization string" doc:id="1613696b-e77e-4b13-a74c-5672c076d78a" body="#[vars.bodySession]" accessKey="${aws.accessKey}" secretKey="${aws.secretKey}" regionName="${aws.region}" serviceName="${aws.service}" canonicalURI='#["/bot/PabiontChat/alias/Dev/user/"++ vars.request.userId as String ++ "/session"]' timeStamp="#[vars.dateSession]" hostName='${aws.host}' />
+		<http:request method="POST" doc:name="Request Put Session" doc:id="09577adf-3e9d-4435-b775-d2607751af19" config-ref="HTTP_Request_configuration_Amazon" path='#[vars.request.userId as String ++ "/session"]'>
+			<http:body ><![CDATA[#[vars.bodySession]]]></http:body>
+			<http:headers ><![CDATA[#[output application/java
+---
+{
+    "Authorization" : payload,
+    "Content-Type" : "application/json",
+    "X-Amz-Date" : vars.dateSession ++ "",
+    "Host" : "runtime.lex.us-east-1.amazonaws.com"
+}]]]></http:headers>
+		</http:request>
+	</flow>
+	<flow name="put-session-register-sflow" doc:id="8ba3d9b6-33f3-41ef-8e7d-f694c0f403d5" >
+		<set-variable value='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10;	"dialogAction": { &#10;      		"intentName": "RegisterClaim",&#10;      		"message": "Yes",&#10;      		"messageFormat": "PlainText",&#10;      		"slots": {&#10;      			"apartmentId": vars.ticket.apartmentId,&#10;      			"inspectionDay": vars.ticket.inspectionDay,&#10;      			"schedule": vars.ticket.schedule&#10;      		},&#10;      		"type": "ConfirmIntent"&#10;   	},&#10;   	"sessionAttributes": vars.lexResponse.sessionAttributes default {} ++&#10;   	{&#10;   		"ticket" : vars.ticket.ticketNumber&#10;   	} &#10;}]' doc:name="bodySession" doc:id="3d1387e1-fb3a-4bea-af6e-d6296963e39f" variableName="bodySession" />
+		<set-variable value="#[output application/json --- (now() &gt;&gt; &quot;UTC&quot;) as DateTime  {format:&quot;yyyyMMdd'T'HHmmss'Z'&quot;}]" doc:name="dateSession" doc:id="ac43e174-3e23-4fd2-8474-460c30d0aa89" variableName="dateSession" />
+		<awsv4auth:get-authorization-string requestType="POST" doc:name="Get authorization string" doc:id="e66bc7ad-528b-40f0-9164-0aa011b7a432" body="#[vars.bodySession]" accessKey="${aws.accessKey}" secretKey="${aws.secretKey}" regionName="${aws.region}" serviceName="${aws.service}" canonicalURI='#["/bot/PabiontChat/alias/Dev/user/"++ vars.request.userId as String ++ "/session"]' timeStamp="#[vars.dateSession]" hostName='${aws.host}' />
+		<http:request method="POST" doc:name="Request Put Session" doc:id="27eed69d-e03c-4043-b5eb-4ed3c676b520" config-ref="HTTP_Request_configuration_Amazon" path='#[vars.request.userId as String ++ "/session"]'>
+			<http:body ><![CDATA[#[vars.bodySession]]]></http:body>
+			<http:headers ><![CDATA[#[output application/java
+---
+{
+    "Authorization" : payload,
+    "Content-Type" : "application/json",
+    "X-Amz-Date" : vars.dateSession ++ "",
+    "Host" : "runtime.lex.us-east-1.amazonaws.com"
+}]]]></http:headers>
+		</http:request>
+	</flow>
+	<flow name="put-session-flag-sflow" doc:id="f8162e9d-39dc-48a1-a7a4-debcd22fb18d">
+		<set-variable value='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10;   	"sessionAttributes": vars.lexResponse.sessionAttributes default {} ++ &#10;   		{&#10;	   		intentFlag: vars.flag.intentFlag,&#10;	   		slotFlag: vars.flag.slotFlag&#10;	   	}&#10;}]' doc:name="bodySession" doc:id="071be106-c17c-4da5-8615-c901ae8deb94" variableName="bodySession" />
+		<set-variable value="#[output application/json --- (now() &gt;&gt; &quot;UTC&quot;) as DateTime  {format:&quot;yyyyMMdd'T'HHmmss'Z'&quot;}]" doc:name="dateSession" doc:id="bffd93a1-1965-4b51-ae43-211a6d2f10bd" variableName="dateSession" />
+		<awsv4auth:get-authorization-string requestType="POST" doc:name="Get authorization string" doc:id="ce173039-4909-4378-b43d-7697ae05fa7c" body="#[vars.bodySession]" accessKey="${aws.accessKey}" secretKey="${aws.secretKey}" regionName="${aws.region}" serviceName="${aws.service}" canonicalURI='#["/bot/PabiontChat/alias/Dev/user/"++ vars.request.userId as String ++ "/session"]' timeStamp="#[vars.dateSession]" hostName='${aws.host}' />
+		<http:request method="POST" doc:name="Request Put Session" doc:id="b33eaab0-8d39-46e1-a480-1619fe249fa9" config-ref="HTTP_Request_configuration_Amazon" path='#[vars.request.userId as String ++ "/session"]'>
+			<http:body><![CDATA[#[vars.bodySession]]]></http:body>
+			<http:headers><![CDATA[#[output application/java
+---
+{
+    "Authorization" : payload,
+    "Content-Type" : "application/json",
+    "X-Amz-Date" : vars.dateSession ++ "",
+    "Host" : "runtime.lex.us-east-1.amazonaws.com"
+}]]]></http:headers>
+		</http:request>
+	</flow>
+	<flow name="put-delete-session-sflow" doc:id="5d3db44a-4ee8-4de1-8eeb-8eb0325a5c07" >
+		<set-variable value='#[%dw 2.0&#10;output application/json&#10;---&#10;{&#10;	"dialogAction": { &#10;      		"intentName": "Welcome",&#10;            "type": "Delegate"&#10;   	},&#10;   	"sessionAttributes": {} &#10;}]' doc:name="bodySession" doc:id="3e737d47-1d45-4315-a28d-34809df5a00b" variableName="bodySession" />
+		<set-variable value="#[output application/json --- (now() &gt;&gt; &quot;UTC&quot;) as DateTime  {format:&quot;yyyyMMdd'T'HHmmss'Z'&quot;}]" doc:name="dateSession" doc:id="08df4abb-7e37-4d44-a9d2-cef087c069ef" variableName="dateSession" />
+		<awsv4auth:get-authorization-string requestType="POST" doc:name="Get authorization string" doc:id="450625fa-23c7-4e5a-aae9-fe64403bd693" body="#[vars.bodySession]" accessKey="${aws.accessKey}" secretKey="${aws.secretKey}" regionName="${aws.region}" serviceName="${aws.service}" canonicalURI='#["/bot/PabiontChat/alias/Dev/user/"++ vars.request.userId as String ++ "/session"]' timeStamp="#[vars.dateSession]" hostName='${aws.host}' />
+		<http:request method="POST" doc:name="Request Put Session" doc:id="98fd3a52-b1db-4434-92d8-d5aaca2b1762" config-ref="HTTP_Request_configuration_Amazon" path='#[vars.request.userId as String ++ "/session"]' >
+			<http:body ><![CDATA[#[vars.bodySession]]]></http:body>
+			<http:headers ><![CDATA[#[output application/java
+---
+{
+    "Authorization" : payload,
+    "Content-Type" : "application/json",
+    "X-Amz-Date" : vars.dateSession ++ "",
+    "Host" : "runtime.lex.us-east-1.amazonaws.com"
+}]]]></http:headers>
+		</http:request>
+	</flow>
+	<flow name="get-session-sflow" doc:id="d4554973-7015-4acb-a257-975184a5622c" >
+		<set-payload value='#[""]' doc:name="Set Payload" doc:id="fd82db5d-00f3-48c3-82e2-4a1e3ab816c9" />
+		<set-variable value="#[output application/json --- (now() &gt;&gt; &quot;UTC&quot;) as DateTime  {format:&quot;yyyyMMdd'T'HHmmss'Z'&quot;}]" doc:name="dateSession" doc:id="292a173e-d8fb-4d75-86ee-99a52e976394" variableName="dateSession" />
+		<awsv4auth:get-authorization-string requestType="GET" doc:name="Get authorization string" doc:id="ab83a61e-9a75-44bf-9426-31f456090834" accessKey="${aws.accessKey}" secretKey="${aws.secretKey}" regionName="${aws.region}" serviceName="${aws.service}" canonicalURI='#["/bot/PabiontChat/alias/Dev/user/"++ vars.request.userId as String ++"/session"]' timeStamp="#[vars.dateSession]" hostName='${aws.host}' contentType="application/json"/>
+		<http:request method="GET" doc:name="Request Get Session" doc:id="dfbcc804-248a-4e0c-93c5-018861d3b432" config-ref="HTTP_Request_configuration_Amazon" path='#[vars.request.userId as String ++ "/session"]'>
+			<http:headers><![CDATA[#[output application/java
+---
+{
+    "Authorization" : payload,
+    "Content-Type" : "application/json",
+    "X-Amz-Date" : vars.dateSession ++ "",
+    "Host" : "runtime.lex.us-east-1.amazonaws.com"
+}]]]></http:headers>
+		</http:request>
+	</flow>
+</mule>

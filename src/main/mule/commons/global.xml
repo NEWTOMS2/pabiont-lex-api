@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:twilio="http://www.mulesoft.org/schema/mule/twilio" xmlns:os="http://www.mulesoft.org/schema/mule/os"
+	xmlns:s3="http://www.mulesoft.org/schema/mule/s3"
+	xmlns:tls="http://www.mulesoft.org/schema/mule/tls" xmlns:secure-properties="http://www.mulesoft.org/schema/mule/secure-properties" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/secure-properties http://www.mulesoft.org/schema/mule/secure-properties/current/mule-secure-properties.xsd
+http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd
+http://www.mulesoft.org/schema/mule/s3 http://www.mulesoft.org/schema/mule/s3/current/mule-s3.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd
+http://www.mulesoft.org/schema/mule/twilio http://www.mulesoft.org/schema/mule/twilio/current/mule-twilio.xsd">
+	<http:request-config name="HTTP_Request_configuration_Amazon" doc:name="HTTP Request configuration" doc:id="023e55bc-6cec-437d-97ea-d2448cbeeb7a" enableCookies="false" basePath="${aws.basePath}">
+		<http:request-connection host="${aws.host}" protocol="HTTPS" port="${aws.port}">
+			<reconnection >
+				<reconnect count="4"/>
+			</reconnection>
+		</http:request-connection>
+	</http:request-config>
+	<global-property doc:name="Global Property" doc:id="64a92c4f-4d88-45b9-9703-1dcbadc7dc10" name="env" value="${env}" />
+	<configuration-properties doc:name="Configuration properties" doc:id="99dbc5a3-8b8d-49d1-a4ee-6997a467368d" file="properties/${env}/app-properties.yaml" />
+	<secure-properties:config name="Secure_Properties_Config" doc:name="Secure Properties Config" doc:id="25109d9c-f09a-41c0-b9f7-00b8b3699300" file="properties/${env}/secure-properties.yaml" key="${secure.key}" >
+		<secure-properties:encrypt algorithm="Blowfish" />
+	</secure-properties:config>
+	<http:request-config name="HTTP_Request_Twilio_Image" doc:name="HTTP Request configuration" doc:id="7f8d7648-16cb-4537-b7a8-83f92fdd1bd8" >
+		<http:request-connection protocol="HTTPS" host="api.twilio.com" />
+	</http:request-config>
+	<http:request-config name="HTTP_Request_pabiont-sys-api" doc:name="HTTP Request configuration" doc:id="4cecf49b-9594-496f-bdc5-48a8c73a6c61" basePath="${Pabiont-sys.basePath}">
+		<http:request-connection protocol="HTTPS" host="${Pabiont-sys.host}" port="${Pabiont-sys.port}" />
+	</http:request-config>
+	<os:object-store name="Object_store_messages" doc:name="Object store" doc:id="0e372eb2-e86e-4c25-aa42-4434c615b20b" />
+	<twilio:config name="Twilio_Connector_Config" doc:name="Twilio Connector Config" doc:id="191ae30b-a404-461f-b034-455146f371b9" >
+		<twilio:account-sid-auth-token-connection username="${twilio.sid}" password="${twilio.password}" />
+	</twilio:config>
+</mule>

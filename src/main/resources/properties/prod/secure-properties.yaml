@@ -1,0 +1,7 @@
+aws:
+  accessKey: "![WgcfLQBO+dAp9UEsfQWLPmQQ9fuTRZFg]"
+  secretKey: "![DeIrE6eJ0JH+DdkKYhxqIqYE807kz0OHLkIhJUILVaYUrmqWJCx6G5j/MPGfdwRG]"
+  
+twilio:
+  sid: "![bHOV8z2/fN1aaWga4k8ZIKWpd+ux9Aew2kLK2TaNSUG62nz0B/tF9g==]"
+  password: "![Rsu7Wt01P7QFvNowMBQt6d3sjgUQg7XqqXijZw1T66oGVZphWxWRNw==]"
