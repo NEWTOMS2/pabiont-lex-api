@@ -4,7 +4,7 @@
 
 	<groupId>com.newtoms</groupId>
 	<artifactId>pabiont-lex-api</artifactId>
-	<version>1.0.8</version>
+	<version>1.0.9</version>
 	<packaging>mule-application</packaging>
 
 	<name>pabiont-lex-api</name>

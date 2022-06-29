@@ -216,7 +216,10 @@ output application/java
 ---
 "yyyy-MM-dd'T'HH:mm:ss.SSSZ"]]></ee:set-variable>
                 <ee:set-variable variableName="final"><![CDATA[false]]></ee:set-variable>
-				<ee:set-variable variableName="From" ><![CDATA[payload.From]]></ee:set-variable>
+				<ee:set-variable variableName="From" ><![CDATA[%dw 2.0
+output application/json
+---
+payload.From]]></ee:set-variable>
             </ee:variables>
         </ee:transform>
         <ee:transform doc:name="Init Flow Logs" doc:id="e868f1b2-f4cd-403e-876d-6c3cdf495b46">
@@ -264,18 +267,20 @@ var messages = payload.message filter ((msg, index) -> index > 0)
                 <os:store doc:name="Store" doc:id="367dddf1-7ef8-47ff-915a-3d86893e5307" key="#[vars.From]" objectStore="Object_store_messages">
                     <os:value><![CDATA[#[vars.messages_os]]]></os:value>
                 </os:store>
-                <ee:transform doc:name="Update payload messages" doc:id="dac5a001-0e78-4bb9-bd89-b02a66ccba1f">
-                    <ee:message>
-                        <ee:set-payload><![CDATA[%dw 2.0
-output application/java
+				<ee:transform doc:name="JSON to XML Response" doc:id="a9df5ac8-b48f-438a-b3e9-ee6e08614c83" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/xml
 import * from dw::util::Values
+var messages = flatten(payload update "message" with (payload.message filter ((msg, index) -> index == 0)))
 ---
-payload update "message" with (payload.message filter ((msg, index) -> index == 0))]]></ee:set-payload>
-                    </ee:message>
-                </ee:transform>
+Response:
+    Message: messages.message[0]]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
             </when>
-        </choice>
-        <ee:transform doc:name="JSON to XML Response" doc:id="b4be8c61-78ee-46b7-875a-3d2302303977">
+			<otherwise >
+				<ee:transform doc:name="JSON to XML Response" doc:id="b4be8c61-78ee-46b7-875a-3d2302303977">
             <ee:message>
                 <ee:set-payload><![CDATA[%dw 2.0
 output application/xml
@@ -284,6 +289,8 @@ Response:
     Message: payload.message]]></ee:set-payload>
             </ee:message>
         </ee:transform>
+			</otherwise>
+        </choice>
         <choice doc:name="Choice" doc:id="3480f9a8-52c7-4704-a527-42366d2d7453">
             <when expression="#[vars.final]">
                 <set-variable value="#[payload]" doc:name="response" doc:id="a17d5091-c925-47fb-a38b-5f70e1155331" variableName="response" />
